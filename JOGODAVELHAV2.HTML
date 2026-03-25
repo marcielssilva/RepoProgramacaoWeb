@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Jogo da Velha: Padrão vs Infinito com Cores Aleatórias</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            background: #f0f2f5; 
+            transition: background 0.3s ease; /* Transição suave para o fundo */
+        }
+        .controls { margin-bottom: 20px; }
+        .board { display: grid; grid-template-columns: repeat(3, 100px); gap: 5px; }
+        .cell { 
+            width: 100px; height: 100px; 
+            background: white; 
+            border: 2px solid #333;
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 2rem; font-weight: bold; cursor: pointer; 
+            transition: background 0.2s ease, border-color 0.3s ease; /* Transição suave */
+        }
+        .cell:hover { background: #eee; }
+        .status { margin-top: 20px; font-size: 1.2rem; font-weight: bold; color: #d9534f; }
+        button { padding: 8px 12px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h2>Jogo da Velha</h2>
+
+    <div class="controls">
+        <label>Modo de Jogo:</label>
+        <select id="gameMode">
+            <option value="standard">Padrão (3 para vencer)</option>
+            <option value="infinite">Infinito (Reset com 2 na linha)</option>
+        </select>
+        <button id="resetButton" onclick="resetGame()">Reiniciar</button>
+    </div>
+
+    <div class="board" id="board">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+    </div>
+
+    <div class="status" id="statusText">Vez do: X</div>
+
+    <script>
+        const boardElement = document.getElementById('board');
+        const cells = document.querySelectorAll('.cell');
+        const statusText = document.getElementById('statusText');
+        const modeSelect = document.getElementById('gameMode');
+        
+        let currentPlayer = "X";
+        let gameState = ["", "", "", "", "", "", "", "", ""];
+        let gameActive = true;
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Linhas
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Colunas
+            [0, 4, 8], [2, 4, 6]             // Diagonais
+        ];
+
+        // Paletas de cores predefinidas (Fundo, Células, Borda, Botão, Texto Botão)
+        const colorPalettes = [
+            ["#f0f2f5", "#ffffff", "#333333", "#007bff", "#ffffff"], // Padrão
+            ["#e0f7fa", "#ffffff", "#00838f", "#00acc1", "#ffffff"], // Azul Ciano
+            ["#fce4ec", "#ffffff", "#c2185b", "#d81b60", "#ffffff"], // Rosa Choque
+            ["#e8f5e9", "#ffffff", "#388e3c", "#43a047", "#ffffff"], // Verde Esmeralda
+            ["#fff3e0", "#ffffff", "#f57c00", "#fb8c00", "#000000"], // Laranja
+            ["#efebe9", "#ffffff", "#5d4037", "#6d4c41", "#ffffff"], // Marrom
+            ["#212121", "#424242", "#bdbdbd", "#616161", "#ffffff"], // Escuro
+            ["#ede7f6", "#ffffff", "#512da8", "#5e35b1", "#ffffff"]  // Roxo
+        ];
+
+        let currentPaletteIndex = 0;
+
+        function applyPalette(paletteIndex) {
+            const palette = colorPalettes[paletteIndex];
+            document.body.style.background = palette[0];
+            cells.forEach(cell => {
+                cell.style.background = palette[1];
+                cell.style.borderColor = palette[2];
+            });
+            const resetButton = document.getElementById('resetButton');
+            resetButton.style.background = palette[3];
+            resetButton.style.color = palette[4];
+        }
+
+        function setRandomPalette() {
+            let nextPaletteIndex;
+            // Garante que a próxima paleta seja diferente da atual
+            do {
+                nextPaletteIndex = Math.floor(Math.random() * colorPalettes.length);
+            } while (nextPaletteIndex === currentPaletteIndex);
+            
+            currentPaletteIndex = nextPaletteIndex;
+            applyPalette(currentPaletteIndex);
+        }
+
+        function handleCellClick(e) {
+            const clickedCell = e.target;
+            const cellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+            if (gameState[cellIndex] !== "" || !gameActive) return;
+
+            updateCell(clickedCell, cellIndex);
+            checkResult();
+        }
+
+        function updateCell(cell, index) {
+            gameState[index] = currentPlayer;
+            cell.innerText = currentPlayer;
+        }
+
+        function checkResult() {
+            const mode = modeSelect.value;
+            
+            if (mode === 'standard') {
+                checkStandardWin();
+            } else {
+                checkInfiniteReset();
+            }
+        }
+
+        function checkStandardWin() {
+            let roundWon = false;
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                statusText.innerText = `Jogador ${currentPlayer} Venceu!`;
+                gameActive = false;
+                return;
+            }
+
+            if (!gameState.includes("")) {
+                statusText.innerText = "Empate!";
+                gameActive = false;
+                return;
+            }
+
+            changePlayer();
+        }
+
+        function checkInfiniteReset() {
+            let shouldReset = false;
+            
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                const vals = [gameState[a], gameState[b], gameState[c]];
+                const count = vals.filter(v => v === currentPlayer).length;
+                
+                if (count >= 2) {
+                    shouldReset = true;
+                    break;
+                }
+            }
+
+            if (shouldReset) {
+                statusText.innerText = "Loop Infinito! Resetando...";
+                setTimeout(() => {
+                    resetGame();
+                }, 600); 
+            } else {
+                changePlayer();
+            }
+        }
+
+        function changePlayer() {
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            statusText.innerText = `Vez do: ${currentPlayer}`;
+        }
+
+        function resetGame() {
+            currentPlayer = "X";
+            gameState = ["", "", "", "", "", "", "", "", ""];
+            gameActive = true;
+            statusText.innerText = "Vez do: X";
+            cells.forEach(cell => cell.innerText = "");
+            setRandomPalette(); // Aplica uma paleta de cores aleatória ao reiniciar
+        }
+
+        // Aplica a paleta inicial ao carregar a página
+        applyPalette(currentPaletteIndex);
+
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+    </script>
+</body>
+</html>

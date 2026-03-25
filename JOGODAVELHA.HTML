@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Jogo da Velha: Padrão vs Infinito</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
+        .controls { margin-bottom: 20px; }
+        .board { display: grid; grid-template-columns: repeat(3, 100px); gap: 5px; }
+        .cell { 
+            width: 100px; height: 100px; background: white; border: 2px solid #333;
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 2rem; font-weight: bold; cursor: pointer; 
+        }
+        .cell:hover { background: #eee; }
+        .status { margin-top: 20px; font-size: 1.2rem; font-weight: bold; color: #d9534f; }
+    </style>
+</head>
+<body>
+
+    <h2>Jogo da Velha</h2>
+
+    <div class="controls">
+        <label>Modo de Jogo:</label>
+        <select id="gameMode">
+            <option value="standard">Padrão (3 para vencer)</option>
+            <option value="infinite">Infinito (Reset com 2 na linha)</option>
+        </select>
+        <button onclick="resetGame()">Reiniciar</button>
+    </div>
+
+    <div class="board" id="board">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+    </div>
+
+    <div class="status" id="statusText">Vez do: X</div>
+
+    <script>
+        const boardElement = document.getElementById('board');
+        const cells = document.querySelectorAll('.cell');
+        const statusText = document.getElementById('statusText');
+        const modeSelect = document.getElementById('gameMode');
+        
+        let currentPlayer = "X";
+        let gameState = ["", "", "", "", "", "", "", "", ""];
+        let gameActive = true;
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Linhas
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Colunas
+            [0, 4, 8], [2, 4, 6]             // Diagonais
+        ];
+
+        function handleCellClick(e) {
+            const clickedCell = e.target;
+            const cellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+            if (gameState[cellIndex] !== "" || !gameActive) return;
+
+            updateCell(clickedCell, cellIndex);
+            checkResult();
+        }
+
+        function updateCell(cell, index) {
+            gameState[index] = currentPlayer;
+            cell.innerText = currentPlayer;
+        }
+
+        function checkResult() {
+            const mode = modeSelect.value;
+            
+            if (mode === 'standard') {
+                checkStandardWin();
+            } else {
+                checkInfiniteReset();
+            }
+        }
+
+        function checkStandardWin() {
+            let roundWon = false;
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                statusText.innerText = `Jogador ${currentPlayer} Venceu!`;
+                gameActive = false;
+                return;
+            }
+
+            if (!gameState.includes("")) {
+                statusText.innerText = "Empate!";
+                gameActive = false;
+                return;
+            }
+
+            changePlayer();
+        }
+
+        function checkInfiniteReset() {
+            // No modo infinito, se houver 2 marcas iguais em uma linha de vitória potencial
+            let shouldReset = false;
+            
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                const vals = [gameState[a], gameState[b], gameState[c]];
+                // Filtra apenas as marcações do jogador atual na linha atual
+                const count = vals.filter(v => v === currentPlayer).length;
+                
+                if (count >= 2) {
+                    shouldReset = true;
+                    break;
+                }
+            }
+
+            if (shouldReset) {
+                statusText.innerText = "Loop Infinito! Resetando...";
+                setTimeout(() => {
+                    resetGame();
+                }, 600); // Pequeno delay para o jogador ver o que aconteceu
+            } else {
+                changePlayer();
+            }
+        }
+
+        function changePlayer() {
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            statusText.innerText = `Vez do: ${currentPlayer}`;
+        }
+
+        function resetGame() {
+            currentPlayer = "X";
+            gameState = ["", "", "", "", "", "", "", "", ""];
+            gameActive = true;
+            statusText.innerText = "Vez do: X";
+            cells.forEach(cell => cell.innerText = "");
+        }
+
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+    </script>
+</body>
+</html>
